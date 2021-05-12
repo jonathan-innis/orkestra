@@ -329,7 +329,7 @@ func (a *argo) generateReverseWorkflow(ctx context.Context, l logr.Logger, nodes
 
 	updateWorkflowTemplates(a.rwf, entry)
 
-	updateWorkflowTemplates(a.rwf, defaultReverseExecutor())
+	updateWorkflowTemplates(a.rwf, defaultExecutor(helmReleaseReverseExecutor, "delete"))
 
 	return nil
 }
@@ -367,7 +367,7 @@ func (a *argo) generateAppGroupTpls(ctx context.Context, g *v1alpha1.Application
 
 	// TODO: Add the executor template
 	// This should eventually be configurable
-	updateWorkflowTemplates(a.wf, defaultExecutor())
+	updateWorkflowTemplates(a.wf, defaultExecutor(helmReleaseExecutor, "install"))
 
 	return nil
 }
@@ -645,10 +645,10 @@ func updateWorkflowTemplates(wf *v1alpha12.Workflow, tpls ...v1alpha12.Template)
 	wf.Spec.Templates = append(wf.Spec.Templates, tpls...)
 }
 
-func defaultExecutor() v1alpha12.Template {
-	executorArgs := []string{"--spec", "{{inputs.parameters.helmrelease}}", "--timeout", "{{inputs.parameters.timeout}}"}
+func defaultExecutor(tplName, action string) v1alpha12.Template {
+	executorArgs := []string{"--spec", "{{inputs.parameters.helmrelease}}", "--action", action, "--timeout", "{{inputs.parameters.timeout}}"}
 	return v1alpha12.Template{
-		Name:               helmReleaseExecutor,
+		Name:               tplName,
 		ServiceAccountName: workflowServiceAccountName(),
 		Inputs: v1alpha12.Inputs{
 			Parameters: []v1alpha12.Parameter{
@@ -669,28 +669,6 @@ func defaultExecutor() v1alpha12.Template {
 			Name:  "executor",
 			Image: "azureorkestra/executor:v0.1.0",
 			Args:  executorArgs,
-		},
-	}
-}
-
-func defaultReverseExecutor() v1alpha12.Template {
-	return v1alpha12.Template{
-		Name:               helmReleaseReverseExecutor,
-		ServiceAccountName: workflowServiceAccountName(),
-		Inputs: v1alpha12.Inputs{
-			Parameters: []v1alpha12.Parameter{
-				{
-					Name: "helmrelease",
-				},
-			},
-		},
-		Executor: &v1alpha12.ExecutorConfig{
-			ServiceAccountName: workflowServiceAccountName(),
-		},
-		Resource: &v1alpha12.ResourceTemplate{
-			// SetOwnerReference: true,
-			Action:   "delete",
-			Manifest: "{{inputs.parameters.helmrelease}}",
 		},
 	}
 }
