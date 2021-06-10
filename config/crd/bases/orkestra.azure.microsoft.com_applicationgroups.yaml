@@ -317,6 +317,11 @@ spec:
                   - type
                   type: object
                 type: array
+              lastSucceededApplications:
+                description: LastSucceededApplications captures the last succeeded applications names that were deployed as part of the previous application group rollout This is used during rollback to determine if applications should be removed
+                items:
+                  type: string
+                type: array
               lastSucceededGeneration:
                 description: LastSucceededGeneration captures the last generation that has successfully completed a full workflow rollout of the application group
                 format: int64

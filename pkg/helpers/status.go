@@ -78,6 +78,7 @@ func (helper *StatusHelper) Succeeded(ctx context.Context, instance *v1alpha1.Ap
 	// Set the status conditions into a succeeding state
 	instance.ReadySucceeded()
 	instance.DeploySucceeded()
+	instance.Status.LastSucceededApplications = instance.GetApplicationNames()
 	if err := helper.patchStatus(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}

@@ -196,6 +196,12 @@ type ApplicationGroupStatus struct {
 	// +optional
 	LastSucceededGeneration int64 `json:"lastSucceededGeneration,omitempty"`
 
+	// LastSucceededApplications captures the last succeeded applications
+	// names that were deployed as part of the previous application group rollout
+	// This is used during rollback to determine if applications should be removed
+	// +optional
+	LastSucceededApplications []string `json:"lastSucceededApplications"`
+
 	// Conditions holds the conditions of the ApplicationGroup
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
@@ -209,6 +215,14 @@ func (in *Application) GetValues() map[string]interface{} {
 		_ = json.Unmarshal(in.Spec.Release.Values.Raw, &values)
 	}
 	return values
+}
+
+func (in *ApplicationGroup) GetApplicationNames() []string {
+	names := make([]string, 0)
+	for _, application := range in.Spec.Applications {
+		names = append(names, application.Name)
+	}
+	return names
 }
 
 func GetJSON(values map[string]interface{}) (*apiextensionsv1.JSON, error) {

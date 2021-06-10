@@ -128,6 +128,11 @@ func (in *ApplicationGroupStatus) DeepCopyInto(out *ApplicationGroupStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.LastSucceededApplications != nil {
+		in, out := &in.LastSucceededApplications, &out.LastSucceededApplications
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]v1.Condition, len(*in))
