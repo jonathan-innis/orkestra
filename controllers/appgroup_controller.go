@@ -5,6 +5,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/Azure/Orkestra/pkg/meta"
 
 	"github.com/Azure/Orkestra/pkg/helpers"
 
@@ -102,16 +103,23 @@ func (r *ApplicationGroupReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if !appGroup.DeletionTimestamp.IsZero() {
 		statusHelper.MarkTerminating(appGroup)
-		result, err := reconcileHelper.Reverse(ctx)
-		if !result.Requeue && err == nil {
+		if err := reconcileHelper.Reverse(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := statusHelper.UpdateStatus(ctx, appGroup); err != nil {
+			logr.Error(err, "failed to update the status of the app group")
+			return ctrl.Result{}, err
+		}
+		if !r.IsProgressing(appGroup) {
 			// Remove the finalizer because we have finished reversing
 			controllerutil.RemoveFinalizer(appGroup, v1alpha1.AppGroupFinalizer)
 			if err := r.Patch(ctx, appGroup, patch); err != nil {
 				return result, err
 			}
 		}
-		return result, err
+		return ctrl.Result{RequeueAfter: v1alpha1.DefaultProgressingRequeue}, nil
 	}
+
 	// Add finalizer if it doesn't already exist
 	if !controllerutil.ContainsFinalizer(appGroup, v1alpha1.AppGroupFinalizer) {
 		controllerutil.AddFinalizer(appGroup, v1alpha1.AppGroupFinalizer)
@@ -137,20 +145,34 @@ func (r *ApplicationGroupReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Update the status based on the current state of the helm charts
 	// and the status of the workflows
-	result, err = statusHelper.UpdateStatus(ctx, appGroup)
-	if err != nil {
+	if err := statusHelper.UpdateStatus(ctx, appGroup); err != nil {
 		logr.Error(err, "failed to update the status of the app group")
 		return ctrl.Result{}, err
 	}
-	if shouldRemediate, err := r.ShouldRemediate(ctx, appGroup); err != nil {
-		return ctrl.Result{}, err
-	} else if shouldRemediate {
+
+	// Validate if we need to remediate the rollout
+	// If we do, we either reverse or rollback
+	if r.ShouldRemediate(appGroup) {
 		if lastSuccessfulSpec := appGroup.GetLastSuccessful(); lastSuccessfulSpec != nil {
-			return reconcileHelper.Rollback(ctx, patch)
+			if err := reconcileHelper.Rollback(ctx); err != nil {
+				return ctrl.Result{}, err
+			}
+		} else {
+			if err := reconcileHelper.Reverse(ctx); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
-		return reconcileHelper.Reverse(ctx)
+		if err := statusHelper.UpdateStatus(ctx, appGroup); err != nil {
+			logr.Error(err, "failed to update the status of the app group")
+			return ctrl.Result{}, err
+		}
 	}
-	return result, nil
+
+	// Requeue short if any of our workflows are progressing
+	if r.IsProgressing(appGroup) {
+		return ctrl.Result{RequeueAfter: v1alpha1.DefaultProgressingRequeue}, nil
+	}
+	return ctrl.Result{RequeueAfter: v1alpha1.GetInterval(appGroup)}, nil
 }
 
 func (r *ApplicationGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -160,12 +182,33 @@ func (r *ApplicationGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ApplicationGroupReconciler) ShouldRemediate(ctx context.Context, instance *v1alpha1.ApplicationGroup) (bool, error) {
-	forwardClient := r.WorkflowClientBuilder.Forward(instance).Build()
-
-	isFailed, err := workflow.IsFailed(ctx, forwardClient)
-	if err != nil {
-		return false, err
+func (r *ApplicationGroupReconciler) ShouldRemediate(instance *v1alpha1.ApplicationGroup) bool {
+	forwardReason := instance.GetWorkflowReason(v1alpha1.ForwardWorkflow)
+	if forwardReason == meta.FailedReason {
+		return !r.DisableRemediation
 	}
-	return isFailed && !r.DisableRemediation, nil
+	return false
+}
+
+func remediationStarted(instance *v1alpha1.ApplicationGroup) bool {
+	rollbackReason := instance.GetWorkflowCondition(v1alpha1.Rollback)
+	reverseReason := instance.GetWorkflowCondition(v1alpha1.Reverse)
+
+	if rollbackReason != nil && rollbackReason.ObservedGeneration == instance.Generation {
+		return true
+	}
+	if reverseReason != nil && reverseReason.ObservedGeneration == instance.Generation {
+		return true
+	}
+	return false
+}
+
+func (r *ApplicationGroupReconciler) IsProgressing(instance *v1alpha1.ApplicationGroup) bool {
+	for _, wfType := range []v1alpha1.WorkflowType{v1alpha1.ForwardWorkflow, v1alpha1.ReverseWorkflow, v1alpha1.RollbackWorkflow} {
+		wfReason := instance.GetWorkflowReason(wfType)
+		if wfReason == meta.ProgressingReason {
+			return true
+		}
+	}
+	return false
 }

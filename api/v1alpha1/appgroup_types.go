@@ -257,30 +257,30 @@ func (in *Application) SetValues(values map[string]interface{}) error {
 // meta.Succeeded reason and message
 func (in *ApplicationGroup) ReadySucceeded() {
 	in.Status.LastSucceededGeneration = in.Generation
-	meta.SetResourceCondition(in, meta.ReadyCondition, metav1.ConditionTrue, meta.SucceededReason, "workflow and reconciliation succeeded")
+	meta.SetResourceCondition(in, in.Generation, meta.ReadyCondition, metav1.ConditionTrue, meta.SucceededReason, "workflow and reconciliation succeeded")
 }
 
 // WorkflowFailed sets the meta.ReadyCondition to 'False' and
 // meta.ReadyWorkflowFailed reason and message
 func (in *ApplicationGroup) WorkflowFailed(message string) {
-	meta.SetResourceCondition(in, meta.ReadyCondition, metav1.ConditionFalse, meta.WorkflowFailedReason, message)
+	meta.SetResourceCondition(in, in.Generation, meta.ReadyCondition, metav1.ConditionFalse, meta.WorkflowFailedReason, message)
 }
 
 // ChartPullFailed sets the meta.ReadyCondition to 'False' and
 // meta.ChartPullFailedReason reason and message
 func (in *ApplicationGroup) ChartPullFailed(message string) {
-	meta.SetResourceCondition(in, meta.ReadyCondition, metav1.ConditionFalse, meta.ChartPullFailedReason, message)
+	meta.SetResourceCondition(in, in.Generation, meta.ReadyCondition, metav1.ConditionFalse, meta.ChartPullFailedReason, message)
 }
 
 // WorkflowTemplateGenerationFailed sets the meta.ReadyCondition to 'False' and
 // meta.TemplateGenerationFailed reason and message
 func (in *ApplicationGroup) WorkflowTemplateGenerationFailed(message string) {
-	meta.SetResourceCondition(in, meta.ReadyCondition, metav1.ConditionFalse, meta.WorkflowTemplateGenerationFailedReason, message)
+	meta.SetResourceCondition(in, in.Generation, meta.ReadyCondition, metav1.ConditionFalse, meta.WorkflowTemplateGenerationFailedReason, message)
 }
 
-// GetReadyCondition gets the string condition.Reason of the
+// GetReadyReason gets the string condition.Reason of the
 // meta.ReadyCondition type
-func (in *ApplicationGroup) GetReadyCondition() string {
+func (in *ApplicationGroup) GetReadyReason() string {
 	condition := meta.GetResourceCondition(in, meta.ReadyCondition)
 	if condition == nil {
 		return meta.ProgressingReason
@@ -288,14 +288,18 @@ func (in *ApplicationGroup) GetReadyCondition() string {
 	return condition.Reason
 }
 
-// GetWorkflowCondition gets the string condition.Reason of the given workflow type
-func (in *ApplicationGroup) GetWorkflowCondition(wfType WorkflowType) string {
-	var condition *metav1.Condition
+func (in *ApplicationGroup) GetWorkflowCondition(wfType WorkflowType) *metav1.Condition {
 	if wfCondition, ok := WorkflowConditionMap[wfType]; ok {
-		condition = meta.GetResourceCondition(in, wfCondition)
+		return meta.GetResourceCondition(in, wfCondition)
 	}
+	return nil
+}
+
+// GetWorkflowReason gets the string condition.Reason of the given workflow type
+func (in *ApplicationGroup) GetWorkflowReason(wfType WorkflowType) string {
+	condition := in.GetWorkflowCondition(wfType)
 	if condition == nil {
-		return meta.ProgressingReason
+		return meta.UnknownReason
 	}
 	return condition.Reason
 }

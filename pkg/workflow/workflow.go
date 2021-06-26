@@ -268,33 +268,36 @@ func UpdateStatus(ctx context.Context, wfClient Client) error {
 // SetProgressing sets one of the workflow conditions in the progressing state
 func SetProgressing(wfClient Client) {
 	if condition, ok := v1alpha1.WorkflowConditionMap[wfClient.GetType()]; ok {
-		meta.SetResourceCondition(wfClient.GetAppGroup(), condition, metav1.ConditionUnknown, meta.ProgressingReason, "workflow is progressing...")
+		meta.SetResourceCondition(wfClient.GetAppGroup(), wfClient.GetAppGroup().Generation, condition, metav1.ConditionUnknown, meta.ProgressingReason, "workflow is progressing...")
 	}
 }
 
 // SetSucceeded sets one of the workflow conditions in the succeeded state
 func SetSucceeded(wfClient Client) {
 	if condition, ok := v1alpha1.WorkflowConditionMap[wfClient.GetType()]; ok {
-		meta.SetResourceCondition(wfClient.GetAppGroup(), condition, metav1.ConditionTrue, meta.SucceededReason, "workflow succeeded")
+		meta.SetResourceCondition(wfClient.GetAppGroup(), wfClient.GetAppGroup().Generation, condition, metav1.ConditionTrue, meta.SucceededReason, "workflow succeeded")
 	}
 }
 
 // SetFailed sets one of the workflow conditions in the failed state
 func SetFailed(wfClient Client, message string) {
 	if condition, ok := v1alpha1.WorkflowConditionMap[wfClient.GetType()]; ok {
-		meta.SetResourceCondition(wfClient.GetAppGroup(), condition, metav1.ConditionFalse, meta.FailedReason, message)
+		meta.SetResourceCondition(wfClient.GetAppGroup(), wfClient.GetAppGroup().Generation, condition, metav1.ConditionFalse, meta.FailedReason, message)
 	}
 }
 
 // SetSuspended sets one of the workflow conditions in the suspended state
 func SetSuspended(wfClient Client) {
 	if condition, ok := v1alpha1.WorkflowConditionMap[wfClient.GetType()]; ok {
-		meta.SetResourceCondition(wfClient.GetAppGroup(), condition, metav1.ConditionFalse, meta.SuspendedReason, "workflow is suspended")
+		meta.SetResourceCondition(wfClient.GetAppGroup(), wfClient.GetAppGroup().Generation, condition, metav1.ConditionFalse, meta.SuspendedReason, "workflow is suspended")
 	}
 }
 
 // IsFailed checks if the workflow created by the workflow client is in a failed state
 func IsFailed(ctx context.Context, wfClient Client) (bool, error) {
+	if condition, ok := v1alpha1.WorkflowConditionMap[wfClient.GetType()]; ok {
+		meta.SetResourceCondition(wfClient.GetAppGroup(), wfClient.GetAppGroup().Generation, condition, metav1.ConditionFalse, meta.SuspendedReason, "workflow is suspended")
+	}
 	wf, err := wfClient.GetWorkflow(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return false, fmt.Errorf("failed to get workflow: %w", err)

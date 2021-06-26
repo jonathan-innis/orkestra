@@ -11,7 +11,6 @@ import (
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -23,47 +22,45 @@ type StatusHelper struct {
 	Recorder              record.EventRecorder
 }
 
-func (helper *StatusHelper) UpdateStatus(ctx context.Context, instance *v1alpha1.ApplicationGroup) (ctrl.Result, error) {
+func (helper *StatusHelper) UpdateStatus(ctx context.Context, instance *v1alpha1.ApplicationGroup) error {
 	chartConditionMap, subChartConditionMap, err := helper.marshallChartStatus(ctx, instance)
 	if err != nil {
-		return ctrl.Result{}, err
+		return fmt.Errorf("failed to marshall the chart status: %w", err)
 	}
 	instance.Status.Applications = getAppStatus(instance, chartConditionMap, subChartConditionMap)
 
 	// update the workflow status
-	result, err := helper.updateWorkflowStatus(ctx, instance)
-	if err != nil {
-		return result, err
+	if err := helper.updateWorkflowStatus(ctx, instance); err != nil {
+		return fmt.Errorf("failed to update the workflow statuses: %w", err)
 	}
-	return result, nil
+	return helper.updateFromForwardStatus(ctx, instance)
 }
 
-func (helper *StatusHelper) updateWorkflowStatus(ctx context.Context, instance *v1alpha1.ApplicationGroup) (ctrl.Result, error) {
+func (helper *StatusHelper) updateWorkflowStatus(ctx context.Context, instance *v1alpha1.ApplicationGroup) error {
 	forwardClient := helper.WorkflowClientBuilder.Forward(instance).Build()
 	reverseClient := helper.WorkflowClientBuilder.Reverse(instance).Build()
 	rollbackClient := helper.WorkflowClientBuilder.Rollback(instance).Build()
 
 	for _, wfClient := range []workflow.Client{forwardClient, reverseClient, rollbackClient} {
 		if err := workflow.UpdateStatus(ctx, wfClient); err != nil {
-			return ctrl.Result{}, err
+			return fmt.Errorf("failed to update workflow type status %s: %w", wfClient.GetType(), err)
 		}
 	}
-	if isFailed, err := workflow.IsFailed(ctx, forwardClient); err != nil {
-		return ctrl.Result{}, err
-	} else if isFailed {
-		// TODO: make this error come from the node itself
+	return nil
+}
+
+func (helper *StatusHelper) updateFromForwardStatus(ctx context.Context, instance *v1alpha1.ApplicationGroup) error {
+	// Update the ready status based on the forward workflow
+	forwardReason := instance.GetWorkflowReason(v1alpha1.Forward)
+	if forwardReason == meta.FailedReason {
 		helper.MarkFailed(instance, fmt.Errorf("workflow in failed state"))
-		return ctrl.Result{RequeueAfter: v1alpha1.GetInterval(instance)}, nil
 	}
-	if isSucceeded, err := workflow.IsSucceeded(ctx, forwardClient); err != nil {
-		return ctrl.Result{}, err
-	} else if isSucceeded {
+	if forwardReason == meta.SucceededReason {
 		if err := helper.MarkSucceeded(ctx, instance); err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
-		return ctrl.Result{RequeueAfter: v1alpha1.GetInterval(instance)}, nil
 	}
-	return ctrl.Result{RequeueAfter: v1alpha1.DefaultProgressingRequeue}, nil
+	return nil
 }
 
 func (helper *StatusHelper) MarkSucceeded(ctx context.Context, instance *v1alpha1.ApplicationGroup) error {
@@ -86,7 +83,7 @@ func (helper *StatusHelper) MarkSucceeded(ctx context.Context, instance *v1alpha
 // meta.StartingReason reason and message.
 func (helper *StatusHelper) MarkProgressing(ctx context.Context, instance *v1alpha1.ApplicationGroup) error {
 	instance.Status.Conditions = []metav1.Condition{}
-	meta.SetResourceCondition(instance, meta.ReadyCondition, metav1.ConditionUnknown, meta.ProgressingReason, "workflow is reconciling...")
+	meta.SetResourceCondition(instance, instance.Generation, meta.ReadyCondition, metav1.ConditionUnknown, meta.ProgressingReason, "workflow is reconciling...")
 
 	return helper.PatchStatus(ctx, instance)
 }
@@ -94,13 +91,14 @@ func (helper *StatusHelper) MarkProgressing(ctx context.Context, instance *v1alp
 // MarkTerminating sets the meta.ReadyCondition to 'False', with the given
 // meta.Terminating reason and message
 func (helper *StatusHelper) MarkTerminating(instance *v1alpha1.ApplicationGroup) {
-	meta.SetResourceCondition(instance, meta.ReadyCondition, metav1.ConditionFalse, meta.TerminatingReason, "application group is terminating...")
+	meta.SetResourceCondition(instance, instance.Generation, meta.ReadyCondition, metav1.ConditionFalse, meta.TerminatingReason, "application group is terminating...")
 }
 
 // MarkFailed sets the meta.ReadyCondition to 'False', with a failed reason
 func (helper *StatusHelper) MarkFailed(instance *v1alpha1.ApplicationGroup, err error) {
 	helper.Recorder.Event(instance, "Warning", "ReconcileError", err.Error())
 	instance.WorkflowFailed(err.Error())
+	instance.Status.ShouldRemediate = true
 }
 
 // MarkChartPullFailed sets the meta.ReadyCondition to 'False', with a chart pull failed reason

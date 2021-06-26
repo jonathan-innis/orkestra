@@ -90,7 +90,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason
+				return applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
 			By("checking that the all the HelmReleases have come up and are in a ready state")
@@ -161,7 +161,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason
+				return applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
 			By("checking that the all the HelmReleases have come up and are in a ready state")
@@ -233,7 +233,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason
+				return applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
 			By("Adding an Application to the ApplicationGroup Spec after the ApplicationGroup has fully reconciled")
@@ -247,7 +247,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason &&
+				return applicationGroup.GetReadyReason() == meta.SucceededReason &&
 					applicationGroup.Generation == applicationGroup.Status.ObservedGeneration
 			}, time.Minute*2, time.Second).Should(BeTrue())
 		})
@@ -293,7 +293,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(applicationGroup), applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.ProgressingReason
+				return applicationGroup.GetReadyReason() == meta.ProgressingReason
 			}, time.Minute*2, time.Second).Should(BeTrue())
 		})
 
@@ -323,7 +323,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason
+				return applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
 			By("upgrading the charts to a newer version")
@@ -338,7 +338,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.ProgressingReason && applicationGroup.Generation > 1
+				return applicationGroup.GetReadyReason() == meta.ProgressingReason && applicationGroup.Generation > 1
 			}, time.Second*30, time.Second).Should(BeTrue())
 
 			By("waiting for the newer version of the charts to be released")
@@ -352,7 +352,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 					return false
 				}
 				return ambassadorHelmRelease.Spec.Chart.Spec.Version == ambassadorChartVersion &&
-					applicationGroup.GetReadyCondition() == meta.SucceededReason
+					applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 		})
 
@@ -382,7 +382,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 					return false
 				}
 				_, exist := applicationGroup.Annotations[v1alpha1.LastSuccessfulAnnotation]
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason && exist
+				return applicationGroup.GetReadyReason() == meta.SucceededReason && exist
 
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
@@ -398,7 +398,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.ProgressingReason && applicationGroup.Generation > 1
+				return applicationGroup.GetReadyReason() == meta.ProgressingReason && applicationGroup.Generation > 1
 			}, time.Second*30, time.Second).Should(BeTrue())
 
 			By("waiting for the newer version of the charts to be released")
@@ -423,8 +423,8 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				}
 				return ambassadorHelmRelease.Spec.Chart.Spec.Version == ambassadorOldChartVersion &&
 					meta.GetResourceCondition(ambassadorHelmRelease, meta.ReadyCondition).Reason == meta2.ReconciliationSucceededReason &&
-					applicationGroup.GetReadyCondition() == meta.WorkflowFailedReason &&
-					applicationGroup.GetWorkflowCondition(v1alpha1.Rollback) == meta.SucceededReason
+					applicationGroup.GetReadyReason() == meta.WorkflowFailedReason &&
+					applicationGroup.GetWorkflowReason(v1alpha1.Rollback) == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 		})
 
@@ -460,7 +460,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.ProgressingReason
+				return applicationGroup.GetReadyReason() == meta.ProgressingReason
 			}, time.Minute, time.Second).Should(BeTrue())
 
 			By("Waiting for the ambassador helm release to be ready")
@@ -532,7 +532,7 @@ var _ = Describe("ApplicationGroup Controller", func() {
 				if err := k8sClient.Get(ctx, key, applicationGroup); err != nil {
 					return false
 				}
-				return applicationGroup.GetReadyCondition() == meta.SucceededReason
+				return applicationGroup.GetReadyReason() == meta.SucceededReason
 			}, DefaultTimeout, time.Second).Should(BeTrue())
 
 			By("Deleting the application group and deleting the workflow")

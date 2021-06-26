@@ -42,6 +42,10 @@ const (
 	// is reconciling the app group and the forward workflow has not completed
 	ProgressingReason string = "Progressing"
 
+	// UnknownReason represents that the status reason of the condition is not
+	// known to the controller
+	UnknownReason string = "Unknown"
+
 	// TerminatingReason represents that the application group is deleting
 	// and waiting for the reverse workflow to complete
 	TerminatingReason string = "Terminating"
@@ -71,13 +75,14 @@ type ObjectWithStatusConditions interface {
 
 // SetResourceCondition sets the given condition with the given status,
 // reason and message on a resource.
-func SetResourceCondition(obj ObjectWithStatusConditions, condition string, status metav1.ConditionStatus, reason, message string) {
+func SetResourceCondition(obj ObjectWithStatusConditions, generation int64, condition string, status metav1.ConditionStatus, reason, message string) {
 	conditions := obj.GetStatusConditions()
 	newCondition := metav1.Condition{
-		Type:    condition,
-		Status:  status,
-		Reason:  reason,
-		Message: message,
+		Type:               condition,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: generation,
 	}
 	apimeta.SetStatusCondition(conditions, newCondition)
 }

@@ -15,9 +15,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jinzhu/copier"
 	"helm.sh/helm/v3/pkg/chart"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -69,25 +67,20 @@ func (helper *ReconcileHelper) CreateOrUpdate(ctx context.Context) error {
 	return nil
 }
 
-func (helper *ReconcileHelper) Rollback(ctx context.Context, patch client.Patch) (ctrl.Result, error) {
+func (helper *ReconcileHelper) Rollback(ctx context.Context) error {
 	helper.Info("Rolling back to last successful application group spec")
+	helper.Instance.GetLastSuccessful()
 	rollbackClient := helper.WorkflowClientBuilder.Rollback(helper.Instance).Build()
 
 	// Re-running the workflow will not re-generate it since we check if we have already started it
 	if err := workflow.Run(ctx, rollbackClient); err != nil {
 		helper.Error(err, "failed to create the workflow for rollback")
-		return ctrl.Result{}, err
+		return err
 	}
-	if isSucceeded, err := workflow.IsSucceeded(ctx, rollbackClient); err != nil {
-		helper.Error(err, "failed to validate if the workflow is succeeded")
-		return ctrl.Result{}, err
-	} else if isSucceeded {
-		return ctrl.Result{}, nil
-	}
-	return reconcile.Result{RequeueAfter: v1alpha1.DefaultProgressingRequeue}, nil
+	return nil
 }
 
-func (helper *ReconcileHelper) Reverse(ctx context.Context) (ctrl.Result, error) {
+func (helper *ReconcileHelper) Reverse(ctx context.Context) error {
 	reverseClient := helper.WorkflowClientBuilder.Reverse(helper.Instance).Build()
 	forwardClient := helper.WorkflowClientBuilder.Forward(helper.Instance).Build()
 	helper.Info("Reversing the workflow")
@@ -95,23 +88,17 @@ func (helper *ReconcileHelper) Reverse(ctx context.Context) (ctrl.Result, error)
 	// Re-running the workflow will not re-generate it since we check if we have already started it
 	if err := workflow.Run(ctx, reverseClient); errors.Is(err, meta.ErrForwardWorkflowNotFound) {
 		// Forward workflow wasn't found so we just return
-		return ctrl.Result{}, nil
+		return nil
 	} else if err != nil {
 		helper.Error(err, "failed to generate reverse workflow")
 		// if generation of reverse workflow failed, delete the forward workflow and return
 		if err := workflow.DeleteWorkflow(ctx, forwardClient); err != nil {
 			helper.Error(err, "failed to delete workflow CRO")
-			return ctrl.Result{}, err
+			return err
 		}
-		return ctrl.Result{}, nil
+		return nil
 	}
-	if isSucceeded, err := workflow.IsSucceeded(ctx, reverseClient); err != nil {
-		helper.Error(err, "failed to validate if the workflow is succeeded")
-		return ctrl.Result{}, err
-	} else if isSucceeded {
-		return ctrl.Result{}, nil
-	}
-	return ctrl.Result{Requeue: true, RequeueAfter: v1alpha1.DefaultProgressingRequeue}, nil
+	return nil
 }
 
 func (helper *ReconcileHelper) reconcileApplications() error {

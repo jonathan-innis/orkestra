@@ -165,8 +165,8 @@ func Test_generateAppDAGTemplates(t *testing.T) {
 													Name: "1ccd4cae89-subchart-3",
 													Labels: map[string]string{
 														ChartLabelKey:  "application",
-														OwnershipLabel: "application",
-														HeritageLabel:  "orkestra",
+														v1alpha1.OwnershipLabel: "application",
+														v1alpha1.HeritageLabel:  "orkestra",
 													},
 													Annotations: map[string]string{
 														v1alpha1.ParentChartAnnotation: "application",
@@ -215,8 +215,8 @@ func Test_generateAppDAGTemplates(t *testing.T) {
 													Name: "1ccd4cae89-subchart-2",
 													Labels: map[string]string{
 														ChartLabelKey:  "application",
-														OwnershipLabel: "application",
-														HeritageLabel:  "orkestra",
+														v1alpha1.OwnershipLabel: "application",
+														v1alpha1.HeritageLabel:  "orkestra",
 													},
 													Annotations: map[string]string{
 														v1alpha1.ParentChartAnnotation: "application",
@@ -265,8 +265,8 @@ func Test_generateAppDAGTemplates(t *testing.T) {
 													Name: "1ccd4cae89-subchart-1",
 													Labels: map[string]string{
 														ChartLabelKey:  "application",
-														OwnershipLabel: "application",
-														HeritageLabel:  "orkestra",
+														v1alpha1.OwnershipLabel: "application",
+														v1alpha1.HeritageLabel:  "orkestra",
 													},
 													Annotations: map[string]string{
 														v1alpha1.ParentChartAnnotation: "application",
@@ -316,8 +316,8 @@ func Test_generateAppDAGTemplates(t *testing.T) {
 													Name: "application",
 													Labels: map[string]string{
 														ChartLabelKey:  "application",
-														OwnershipLabel: "application",
-														HeritageLabel:  "orkestra",
+														v1alpha1.OwnershipLabel: "application",
+														v1alpha1.HeritageLabel:  "orkestra",
 													},
 												},
 												Spec: fluxhelmv2beta1.HelmReleaseSpec{
@@ -425,8 +425,8 @@ func Test_generateAppDAGTemplates(t *testing.T) {
 													Name: "application",
 													Labels: map[string]string{
 														ChartLabelKey:  "application",
-														OwnershipLabel: "application",
-														HeritageLabel:  "orkestra",
+														v1alpha1.OwnershipLabel: "application",
+														v1alpha1.HeritageLabel:  "orkestra",
 													},
 												},
 												Spec: fluxhelmv2beta1.HelmReleaseSpec{
@@ -566,8 +566,8 @@ func Test_generateSubchartAndAppDAGTasks(t *testing.T) {
 										Name: "1ccd4cae89-subchart-3",
 										Labels: map[string]string{
 											ChartLabelKey:  "application",
-											OwnershipLabel: "application",
-											HeritageLabel:  "orkestra",
+											v1alpha1.OwnershipLabel: "application",
+											v1alpha1.HeritageLabel:  "orkestra",
 										},
 										Annotations: map[string]string{
 											v1alpha1.ParentChartAnnotation: "application",
@@ -616,8 +616,8 @@ func Test_generateSubchartAndAppDAGTasks(t *testing.T) {
 										Name: "1ccd4cae89-subchart-2",
 										Labels: map[string]string{
 											ChartLabelKey:  "application",
-											OwnershipLabel: "application",
-											HeritageLabel:  "orkestra",
+											v1alpha1.OwnershipLabel: "application",
+											v1alpha1.HeritageLabel:  "orkestra",
 										},
 										Annotations: map[string]string{
 											v1alpha1.ParentChartAnnotation: "application",
@@ -666,8 +666,8 @@ func Test_generateSubchartAndAppDAGTasks(t *testing.T) {
 										Name: "1ccd4cae89-subchart-1",
 										Labels: map[string]string{
 											ChartLabelKey:  "application",
-											OwnershipLabel: "application",
-											HeritageLabel:  "orkestra",
+											v1alpha1.OwnershipLabel: "application",
+											v1alpha1.HeritageLabel:  "orkestra",
 										},
 										Annotations: map[string]string{
 											v1alpha1.ParentChartAnnotation: "application",
@@ -716,8 +716,8 @@ func Test_generateSubchartAndAppDAGTasks(t *testing.T) {
 										Name: "application",
 										Labels: map[string]string{
 											ChartLabelKey:  "application",
-											OwnershipLabel: "application",
-											HeritageLabel:  "orkestra",
+											v1alpha1.OwnershipLabel: "application",
+											v1alpha1.HeritageLabel:  "orkestra",
 										},
 									},
 									Spec: fluxhelmv2beta1.HelmReleaseSpec{
